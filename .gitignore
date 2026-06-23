@@ -1,0 +1,29 @@
+# Build
+build/
+cmake-build-*/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Resource packs (user-provided .zips)
+*.zip
+
+# Extern - GLFW source/tests/docs (keep headers + lib)
+extern/glfw/src/
+extern/glfw/docs/
+extern/glfw/tests/
+extern/glfw/examples/
+extern/glfw/deps/
+
+# Extern - large binaries (shader compiler tools)
+extern/glslang
+extern/glslangValidator
+extern/spirv-remap
