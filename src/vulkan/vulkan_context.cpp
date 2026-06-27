@@ -61,6 +61,22 @@ void VulkanContext::recreateSwapchain(int width, int height) {
     createFramebuffers();
 }
 
+void VulkanContext::recreateSwapchain() {
+    vkDeviceWaitIdle(m_device);
+    cleanupSwapchain();
+    recreateSwapchainInternal();
+    createImageViews();
+    createColorResources();
+    createDepthResources();
+    createFramebuffers();
+}
+
+void VulkanContext::setVSync(bool enabled) {
+    if (m_vsyncEnabled == enabled) return;
+    m_vsyncEnabled = enabled;
+    recreateSwapchain();
+}
+
 void VulkanContext::createInstance(const std::vector<const char*>& extensions) {
     if (m_enableValidationLayers && !checkValidationLayerSupport()) {
         std::cerr << "Validation layers requested but not available" << std::endl;
@@ -69,7 +85,7 @@ void VulkanContext::createInstance(const std::vector<const char*>& extensions) {
 
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "Minecraft Clone";
+    appInfo.pApplicationName = "MoidCraft";
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "Custom Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -547,6 +563,13 @@ VkSurfaceFormatKHR VulkanContext::chooseSwapSurfaceFormat(const std::vector<VkSu
 }
 
 VkPresentModeKHR VulkanContext::chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& modes) const {
+    if (m_vsyncEnabled) {
+        for (const auto& m : modes)
+            if (m == VK_PRESENT_MODE_FIFO_KHR) return m;
+        return VK_PRESENT_MODE_FIFO_KHR;
+    }
+    for (const auto& m : modes)
+        if (m == VK_PRESENT_MODE_IMMEDIATE_KHR) return m;
     for (const auto& m : modes)
         if (m == VK_PRESENT_MODE_MAILBOX_KHR) return m;
     return VK_PRESENT_MODE_FIFO_KHR;

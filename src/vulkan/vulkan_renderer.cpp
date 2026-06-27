@@ -27,6 +27,7 @@ void VulkanRenderer::cleanup() {
 
     m_opaquePipeline.reset();
     m_transparentPipeline.reset();
+    m_debugPipeline.reset();
 
     for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         if (m_commandBuffers[i]) vkFreeCommandBuffers(dev, m_ctx->commandPool(), 1, &m_commandBuffers[i]);
@@ -159,15 +160,32 @@ void VulkanRenderer::drawMeshTransparent(const VulkanMesh& mesh, const glm::mat4
     mesh.draw(cmd);
 }
 
+void VulkanRenderer::drawMeshDebug(const VulkanMesh& mesh, const glm::mat4& model) {
+    if (!mesh.valid()) return;
+    VkCommandBuffer cmd = m_commandBuffers[m_currentFrame];
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_debugPipeline->pipeline());
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                            m_debugPipeline->layout(), 0, 1,
+                            &m_descriptorSets[m_currentFrame], 0, nullptr);
+    vkCmdPushConstants(cmd, m_debugPipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT,
+                       0, sizeof(glm::mat4), &model);
+    mesh.bind(cmd);
+    mesh.draw(cmd);
+}
+
 void VulkanRenderer::updateUniforms() {
     UniformBufferObject ubo{};
     ubo.view = m_camera->viewMatrix();
     float aspect = (float)m_ctx->swapchainExtent().width / (float)m_ctx->swapchainExtent().height;
-    ubo.proj = m_camera->projectionMatrix(aspect);
+    ubo.proj = m_camera->projectionMatrix(aspect, m_camera->fov());
     ubo.proj[1][1] *= -1;
-    ubo.fogColor = glm::vec4(0.5f, 0.7f, 1.0f, 1.0f);
+    ubo.fogColor = m_underwater
+        ? glm::vec4(0.05f, 0.15f, 0.35f, 0.8f)
+        : glm::vec4(0.5f, 0.7f, 1.0f, 1.0f);
     ubo.cameraPos = glm::vec4(m_camera->position(), 1.0f);
     ubo.time = 0.0f;
+    ubo.gamma = m_gamma;
+    ubo.alphaDiscard = 0.05f;
 
     memcpy(m_uniformMapped[m_currentFrame], &ubo, sizeof(ubo));
 }
@@ -321,4 +339,12 @@ void VulkanRenderer::createPipeline() {
         "shaders/block.vert.spv", "shaders/block.frag.spv",
         Vertex::bindingDesc(), attribVec,
         m_descriptorLayout, pcRange, true, true);
+
+    m_debugPipeline = std::make_unique<VulkanPipeline>();
+    m_debugPipeline->init(m_ctx,
+        "shaders/block.vert.spv", "shaders/block.frag.spv",
+        Vertex::bindingDesc(), attribVec,
+        m_descriptorLayout, pcRange,
+        false, true, VK_CULL_MODE_NONE,
+        VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
 }

@@ -1,17 +1,19 @@
 # MoidCraft
 
-A Minecraft clone built with C++20 and Vulkan. This is an open-source project.
+A voxel-based sandbox game built from scratch with C++20 and Vulkan 1.3.
 
 ## Features
 
-- Procedurally generated terrain with trees (FastNoiseLite)
-- Vulkan 1.3 rendering with MSAA, mipmapping, fog, and transparency
-- Per-axis AABB collision with block-boundary snapping
-- DDA voxel raycasting for block break/place (up to 8 blocks)
-- Hotbar with item selection (scroll wheel / 1-9 keys)
-- Texture atlas from vanilla Minecraft `.zip` resource packs
-- Fallback procedural textures when no resource pack is found
-- Flying mode, jump holding, smooth movement
+- **Procedural terrain** — infinite world with 6 biomes (Plains, Forest, Desert, Taiga, Mountains, Ocean)
+- **Tree generation** — Oak and Spruce variants naturally placed
+- **Vulkan 1.3 rendering** — MSAA, mipmapping, anisotropic filtering, distance fog, gamma correction
+- **First-person controls** — WASD movement, jump, flying mode, smooth collision
+- **Block interaction** — DDA raycasting for break/place (up to 8 blocks)
+- **Inventory system** — 36-slot inventory with 9-slot hotbar and crafting table
+- **Full UI** — Main menu, pause menu, settings screen with sliders & toggles
+- **F3 debug overlay** — FPS, 1%/0.1% percentile lows, coordinates, render distance
+- **Resource pack loading** — Loads vanilla `.zip` packs with procedural fallback
+- **Settings persistence** — Render distance, brightness, sensitivity, FOV, vsync saved to `options.txt`
 
 ## Building
 
@@ -29,7 +31,7 @@ A Minecraft clone built with C++20 and Vulkan. This is an open-source project.
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j$(nproc)
-./minecraft
+./moidcraft
 ```
 
 Enable Vulkan validation layers with `-DENABLE_VALIDATION_LAYERS=ON`.
@@ -46,26 +48,28 @@ Enable Vulkan validation layers with `-DENABLE_VALIDATION_LAYERS=ON`.
 | Scroll | Cycle hotbar slot |
 | Left click | Break block |
 | Right click | Place block from hotbar |
-| Escape | Toggle cursor capture |
+| Escape | Open pause menu |
+| F3 | Toggle debug overlay |
 
 ## Resource Packs
 
-Drop a vanilla Minecraft `.zip` resource pack in the project root or `resourcepacks/` directory. The game will automatically find and load it. If no pack is found, procedural fallback textures are generated.
+Drop a vanilla `.zip` resource pack in the project root or `resourcepacks/` directory. The game will automatically find and load it. If no pack is found, procedural fallback textures are generated.
 
 ## Project Structure
 
 ```
 src/
-  core/       - Engine, Input, Camera, TextureManager, Window
+  core/       - Engine, Input, Camera, Window, Settings, TextureManager
   vulkan/     - VulkanContext, VulkanRenderer, VulkanPipeline, VulkanMesh
-  world/      - World, Chunk, ChunkMesh, TerrainGen, Block
+  world/      - World, Chunk, ChunkMesh, TerrainGen, Block, TreeBlueprint
   player/     - Player movement, collision, interaction
   inventory/  - Inventory, CraftingTable
-  ui/         - Menu system (WIP)
-extern/       - Third-party headers (glm, stb, glfw, FastNoiseLite)
+  ui/         - Menu system (MenuState, PauseState, SettingsState, UIRenderer)
+extern/       - Third-party headers/libs (glm, stb, glfw, FastNoiseLite)
 shaders/      - GLSL shaders compiled to SPIR-V
+textures/     - UI textures (font, buttons, backgrounds)
 ```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](LICENSE) for details.

@@ -18,6 +18,10 @@ glm::mat4 Camera::viewMatrix() const {
     return glm::lookAt(m_position, m_position + f, glm::vec3(0, 1, 0));
 }
 
+glm::mat4 Camera::projectionMatrix(float aspect) const {
+    return glm::perspective(glm::radians(m_fov), aspect, 0.1f, 1000.0f);
+}
+
 glm::mat4 Camera::projectionMatrix(float aspect, float fov) const {
     return glm::perspective(glm::radians(fov), aspect, 0.1f, 1000.0f);
 }

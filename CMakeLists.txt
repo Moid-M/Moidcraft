@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(MinecraftClone VERSION 0.1.0 LANGUAGES C CXX)
+project(MoidCraft VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -66,6 +66,7 @@ set(X11_LIBS
 set(SOURCES
     src/main.cpp
     src/core/engine.cpp
+    src/core/settings.cpp
     src/core/window.cpp
     src/core/input.cpp
     src/core/camera.cpp
@@ -78,14 +79,20 @@ set(SOURCES
     src/world/chunk_mesh.cpp
     src/world/world.cpp
     src/world/terrain_gen.cpp
+    src/world/tree_blueprint.cpp
     src/player/player.cpp
     src/inventory/inventory.cpp
     src/inventory/crafting.cpp
     src/core/texture_manager.cpp
+    src/ui/ui_renderer.cpp
+    src/ui/menu_state.cpp
+    src/ui/pause_state.cpp
+    src/ui/settings_state.cpp
 )
 
 set(HEADERS
     src/core/engine.hpp
+    src/core/settings.hpp
     src/core/window.hpp
     src/core/input.hpp
     src/core/camera.hpp
@@ -100,15 +107,21 @@ set(HEADERS
     src/world/chunk_mesh.hpp
     src/world/world.hpp
     src/world/terrain_gen.hpp
+    src/world/tree_blueprint.hpp
     src/player/player.hpp
     src/inventory/inventory.hpp
     src/inventory/crafting.hpp
     src/core/texture_manager.hpp
+    src/ui/ui_renderer.hpp
+    src/ui/menu_state.hpp
+    src/ui/pause_state.hpp
+    src/ui/settings_state.hpp
+    src/ui/font_data.hpp
 )
 
-add_executable(minecraft ${SOURCES} ${HEADERS})
+add_executable(moidcraft ${SOURCES} ${HEADERS})
 
-target_link_libraries(minecraft
+target_link_libraries(moidcraft
     glfw
     ${VULKAN_LIB}
     ${DL_LIB}
@@ -118,5 +131,6 @@ target_link_libraries(minecraft
     m
 )
 
-# Copy shaders to build dir
+# Copy shaders and textures to build dir
 file(COPY ${CMAKE_SOURCE_DIR}/shaders/ DESTINATION ${CMAKE_BINARY_DIR}/shaders/)
+file(COPY ${CMAKE_SOURCE_DIR}/textures/ DESTINATION ${CMAKE_BINARY_DIR}/textures/)

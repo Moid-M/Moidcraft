@@ -2,6 +2,21 @@
 #include <glm/glm.hpp>
 #include <algorithm>
 
+static bool s_fancyLeaves = false;
+
+void ChunkMesh::setTransparentLeaves(bool enabled) {
+    s_fancyLeaves = enabled;
+}
+
+bool ChunkMesh::transparentLeavesEnabled() {
+    return s_fancyLeaves;
+}
+
+static bool isLeafType(BlockType type) {
+    if (s_fancyLeaves) return false;
+    return type == BlockType::Leaves || type == BlockType::SpruceLeaves;
+}
+
 void ChunkMesh::init(VulkanContext* ctx) {
     m_ctx = ctx;
     m_opaqueMesh.init(ctx);
@@ -23,7 +38,7 @@ void ChunkMesh::build(const Chunk& chunk, Chunk* neighborChunks[4], TextureManag
                 if (blockType == BlockType::Air) continue;
 
                 const auto& info = db.getInfo(blockType);
-                bool trans = info.transparent;
+                bool trans = info.transparent && !isLeafType(blockType);
 
                 for (int f = 0; f < 6; f++) {
                     const auto& face = BlockFaces::faces[f];
@@ -51,7 +66,9 @@ void ChunkMesh::build(const Chunk& chunk, Chunk* neighborChunks[4], TextureManag
 
                     bool renderFace = false;
                     if (neighborType == BlockType::Air) renderFace = true;
-                    else if (neighborInfo.transparent) renderFace = true;
+                    else if (neighborInfo.transparent) {
+                        renderFace = !(info.liquid && neighborInfo.liquid);
+                    }
 
                     if (renderFace) {
                         int texIdx = info.textureIndex(static_cast<BlockFaceDir>(f));
@@ -115,7 +132,4 @@ void ChunkMesh::addFace(bool transparent, const glm::vec3& pos, BlockFaceDir fac
     indices.push_back(start + 3);
 }
 
-void ChunkMesh::addVertex(bool transparent, const Vertex& v) {
-    auto& verts = transparent ? m_transparentVerts : m_opaqueVerts;
-    verts.push_back(v);
-}
+

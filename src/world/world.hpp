@@ -27,6 +27,11 @@ public:
     void update(const glm::vec3& playerPos);
     void render(VulkanRenderer* renderer);
     void renderTransparent(VulkanRenderer* renderer);
+    void renderDebug(VulkanRenderer* renderer, const glm::vec3& playerPos);
+    void toggleDebugBorders() { m_showChunkBorders = !m_showChunkBorders; }
+    void setRenderDistance(int dist) { m_renderDistance = std::clamp(dist, 2, 32); m_prevCx = 999999; m_prevCz = 999999; }
+    int renderDistance() const { return m_renderDistance; }
+    void rebuildAllMeshes();
 
     BlockType getBlock(int x, int y, int z) const;
     void setBlock(int x, int y, int z, BlockType type);
@@ -51,8 +56,15 @@ private:
     std::queue<BuildTask> m_buildQueue;
     std::unordered_map<glm::ivec2, bool, ChunkPairHash> m_requestedBuilds;
 
+    int m_renderDistance = 8;
     int m_prevCx = 999999;
     int m_prevCz = 999999;
+
+    bool m_showChunkBorders = false;
+    VulkanMesh m_debugMesh;
+    bool m_debugDirty = true;
+
+    void rebuildDebugMesh(const glm::vec3& playerPos);
 
     Chunk* loadChunk(int cx, int cz);
     Chunk* getOrCreateChunk(int cx, int cz);

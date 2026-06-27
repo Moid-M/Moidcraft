@@ -13,6 +13,7 @@ World::~World() {
 void World::init(VulkanContext* ctx, TextureManager* texMgr) {
     m_ctx = ctx;
     m_texMgr = texMgr;
+    m_debugMesh.init(ctx);
 }
 
 Chunk* World::getChunk(int cx, int cz) {
@@ -26,8 +27,27 @@ Chunk* World::getOrCreateChunk(int cx, int cz) {
     if (it != m_chunks.end()) return it->second.get();
 
     auto chunk = std::make_unique<Chunk>(cx, cz);
-    m_terrainGen.generate(*chunk);
     auto* ptr = chunk.get();
+
+    Chunk* neighbors[4] = {};
+    {
+        auto n = m_chunks.find({cx - 1, cz});
+        if (n != m_chunks.end()) neighbors[0] = n->second.get();
+    }
+    {
+        auto n = m_chunks.find({cx + 1, cz});
+        if (n != m_chunks.end()) neighbors[1] = n->second.get();
+    }
+    {
+        auto n = m_chunks.find({cx, cz - 1});
+        if (n != m_chunks.end()) neighbors[2] = n->second.get();
+    }
+    {
+        auto n = m_chunks.find({cx, cz + 1});
+        if (n != m_chunks.end()) neighbors[3] = n->second.get();
+    }
+
+    m_terrainGen.generate(*ptr, neighbors);
     m_chunks[key] = std::move(chunk);
     return ptr;
 }
@@ -86,8 +106,9 @@ void World::updateChunkLoad(const glm::vec3& playerPos) {
 
     m_prevCx = pcx;
     m_prevCz = pcz;
+    m_debugDirty = true;
 
-    int radius = RENDER_DISTANCE;
+    int radius = m_renderDistance;
     for (int dx = -radius; dx <= radius; dx++) {
         for (int dz = -radius; dz <= radius; dz++) {
             int cx = pcx + dx;
@@ -135,6 +156,82 @@ void World::renderTransparent(VulkanRenderer* renderer) {
             model = glm::translate(model, glm::vec3(pos.x * CHUNK_SIZE, 0, pos.y * CHUNK_SIZE));
             renderer->drawMeshTransparent(mesh->transparentMesh(), model);
         }
+    }
+}
+
+void World::rebuildAllMeshes() {
+    for (auto& [pos, chunk] : m_chunks) {
+        rebuildMesh(pos.x, pos.y);
+    }
+}
+
+void World::rebuildDebugMesh(const glm::vec3& playerPos) {
+    if (m_chunks.empty()) return;
+
+    int pcx = (int)std::floor(playerPos.x / CHUNK_SIZE);
+    int pcz = (int)std::floor(playerPos.z / CHUNK_SIZE);
+
+    int texIdx = m_texMgr->getTextureIndex("debug_border");
+    const auto& region = m_texMgr->getRegion(texIdx);
+    glm::vec2 uv((region.u1 + region.u2) * 0.5f, (region.v1 + region.v2) * 0.5f);
+    Vertex vertTemplate{};
+    vertTemplate.normal = glm::vec3(0.0f);
+    vertTemplate.uv = uv;
+    vertTemplate.lighting = 255;
+
+    std::vector<Vertex> verts;
+    verts.reserve(m_chunks.size() * 24);
+
+    for (auto& [pos, chunk] : m_chunks) {
+        float x1 = (float)(pos.x * CHUNK_SIZE);
+        float x2 = x1 + CHUNK_SIZE;
+        float z1 = (float)(pos.y * CHUNK_SIZE);
+        float z2 = z1 + CHUNK_SIZE;
+        float y1 = 0.0f;
+        float y2 = (float)CHUNK_HEIGHT;
+        bool isCurrentChunk = (pos.x == pcx && pos.y == pcz);
+
+        auto addVert = [&](float x, float y, float z) {
+            vertTemplate.pos = glm::vec3(x, y, z);
+            verts.push_back(vertTemplate);
+        };
+
+        auto addLine = [&](float x0, float y0, float z0, float x1, float y1, float z1) {
+            addVert(x0, y0, z0);
+            addVert(x1, y1, z1);
+        };
+
+        // Bottom face (y=0) — always drawn
+        addLine(x1, y1, z1, x2, y1, z1);
+        addLine(x2, y1, z1, x2, y1, z2);
+        addLine(x2, y1, z2, x1, y1, z2);
+        addLine(x1, y1, z2, x1, y1, z1);
+
+        if (isCurrentChunk) {
+            // Top face (y=256)
+            addLine(x1, y2, z1, x2, y2, z1);
+            addLine(x2, y2, z1, x2, y2, z2);
+            addLine(x2, y2, z2, x1, y2, z2);
+            addLine(x1, y2, z2, x1, y2, z1);
+            // Vertical edges
+            addLine(x1, y1, z1, x1, y2, z1);
+            addLine(x2, y1, z1, x2, y2, z1);
+            addLine(x2, y1, z2, x2, y2, z2);
+            addLine(x1, y1, z2, x1, y2, z2);
+        }
+    }
+
+    m_debugMesh.upload(verts, {});
+}
+
+void World::renderDebug(VulkanRenderer* renderer, const glm::vec3& playerPos) {
+    if (!m_showChunkBorders) return;
+    if (m_debugDirty) {
+        rebuildDebugMesh(playerPos);
+        m_debugDirty = false;
+    }
+    if (m_debugMesh.valid()) {
+        renderer->drawMeshDebug(m_debugMesh, glm::mat4(1.0f));
     }
 }
 

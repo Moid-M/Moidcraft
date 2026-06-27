@@ -30,7 +30,9 @@ void VulkanPipeline::init(VulkanContext* ctx, const std::string& vertShader, con
                           std::vector<VkVertexInputAttributeDescription> attribDescs,
                           VkDescriptorSetLayout descriptorLayout,
                           VkPushConstantRange pushConstant,
-                          bool depthTest, bool transparent) {
+                          bool depthTest, bool transparent,
+                          VkCullModeFlags cullMode,
+                          VkPrimitiveTopology topology) {
     m_ctx = ctx;
 
     auto vertModule = createShader(vertShader);
@@ -50,7 +52,7 @@ void VulkanPipeline::init(VulkanContext* ctx, const std::string& vertShader, con
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.topology = topology;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
     VkPipelineViewportStateCreateInfo viewportState{};
@@ -64,7 +66,7 @@ void VulkanPipeline::init(VulkanContext* ctx, const std::string& vertShader, con
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.cullMode = cullMode;
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -96,7 +98,7 @@ void VulkanPipeline::init(VulkanContext* ctx, const std::string& vertShader, con
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable = depthTest ? VK_TRUE : VK_FALSE;
-    depthStencil.depthWriteEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = transparent ? VK_FALSE : VK_TRUE;
     depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
     depthStencil.depthBoundsTestEnable = VK_FALSE;
     depthStencil.stencilTestEnable = VK_FALSE;
@@ -152,20 +154,4 @@ void VulkanPipeline::cleanup() {
     m_layout = VK_NULL_HANDLE;
 }
 
-void VulkanDescriptorLayout::addBinding(u32 binding, VkDescriptorType type, VkShaderStageFlags stage, u32 count) {
-    m_bindings.push_back({binding, type, count, stage, nullptr});
-}
 
-void VulkanDescriptorLayout::build(VulkanContext* ctx) {
-    m_ctx = ctx;
-    VkDescriptorSetLayoutCreateInfo info{};
-    info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    info.bindingCount = static_cast<u32>(m_bindings.size());
-    info.pBindings = m_bindings.data();
-    VK_CHECK(vkCreateDescriptorSetLayout(m_ctx->device(), &info, nullptr, &m_layout));
-}
-
-void VulkanDescriptorLayout::cleanup() {
-    if (m_ctx && m_layout) vkDestroyDescriptorSetLayout(m_ctx->device(), m_layout, nullptr);
-    m_layout = VK_NULL_HANDLE;
-}

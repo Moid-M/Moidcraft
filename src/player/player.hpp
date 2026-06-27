@@ -21,8 +21,12 @@ public:
     int selectedSlot() const { return m_selectedSlot; }
     void setSelectedSlot(int slot);
 
+    void setMouseSensitivity(float s) { m_mouseSensitivity = std::clamp(s, 0.05f, 2.0f); }
+    float mouseSensitivity() const { return m_mouseSensitivity; }
+
     void setFlying(bool f) { m_flying = f; }
     bool flying() const { return m_flying; }
+    bool isInWater() const;
 
 private:
     Camera* m_camera = nullptr;

@@ -14,6 +14,9 @@ struct UniformBufferObject {
     alignas(16) glm::vec4 fogColor;
     alignas(16) glm::vec4 cameraPos;
     alignas(4) float time;
+    alignas(4) float gamma;
+    alignas(4) float alphaDiscard;
+    alignas(4) float _pad0;
 };
 
 class VulkanRenderer {
@@ -25,12 +28,14 @@ public:
     void cleanup();
 
     void setTextureManager(TextureManager* texMgr) { m_texMgr = texMgr; }
-
+    void setUnderwater(bool v) { m_underwater = v; }
+    void setGamma(float g) { m_gamma = std::clamp(g, 0.5f, 1.5f); }
     void beginFrame();
     void endFrame();
 
     void drawMesh(const VulkanMesh& mesh, const glm::mat4& model);
     void drawMeshTransparent(const VulkanMesh& mesh, const glm::mat4& model);
+    void drawMeshDebug(const VulkanMesh& mesh, const glm::mat4& model);
 
     VkCommandBuffer currentCommandBuffer() const { return m_commandBuffers[m_currentFrame]; }
     int currentFrame() const { return m_currentFrame; }
@@ -42,6 +47,9 @@ private:
     VulkanContext* m_ctx = nullptr;
     const Camera* m_camera = nullptr;
     TextureManager* m_texMgr = nullptr;
+    bool m_underwater = false;
+    float m_gamma = 1.0f;
+
 
     static constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -63,6 +71,7 @@ private:
 
     std::unique_ptr<VulkanPipeline> m_opaquePipeline;
     std::unique_ptr<VulkanPipeline> m_transparentPipeline;
+    std::unique_ptr<VulkanPipeline> m_debugPipeline;
 
     void createDescriptorPool();
     void createDescriptorLayout();

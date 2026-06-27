@@ -95,7 +95,7 @@ bool TextureManager::loadResourcePack(const std::string& path) {
     int numEntries = eocd.numEntries;
     u32 centralDirOffset = eocd.centralDirOffset;
 
-    const std::string prefix = "assets/minecraft/textures/block/";
+    const std::string prefix = "assets/minecraft/textures/block/"; // Minecraft resource pack internal path
 
     for (int i = 0; i < numEntries; i++) {
         ZipCentralDirEntry entry;
@@ -107,13 +107,14 @@ bool TextureManager::loadResourcePack(const std::string& path) {
         // Skip directories
         if (name.back() == '/') continue;
         // Only process PNG files in block textures directory
-        if (name.find(prefix) != 0) continue;
+        auto texPos = name.find(prefix);
+        if (texPos == std::string::npos) continue;
 
         std::string ext = ".png";
         if (name.size() < ext.size() ||
             name.compare(name.size() - ext.size(), ext.size(), ext) != 0) continue;
 
-        std::string blockName = name.substr(prefix.size());
+        std::string blockName = name.substr(texPos + prefix.size());
         blockName = blockName.substr(0, blockName.size() - ext.size());
         if (blockName.find('/') != std::string::npos) continue;
 
@@ -154,8 +155,84 @@ bool TextureManager::loadResourcePack(const std::string& path) {
     }
 
     std::cout << "Loaded " << m_textures.size() << " block textures" << std::endl;
+
+    fixLeafTextures();
+
+    auto fixTex = [&](const char* name, const std::vector<u8>& pixels) {
+        auto it = m_nameMap.find(name);
+        if (it != m_nameMap.end()) {
+            auto& tex = m_textures[it->second];
+            tex.pixels = pixels;
+        }
+    };
+
+    auto gen = [&](u8* buf, int size, u8 baseR, u8 baseG, u8 baseB, int seed) {
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                int idx = (y * size + x) * 4;
+                int n = ((x * 31 + y * 37) ^ (seed * 251)) & 0xff;
+                int r = std::min(255, std::max(0, (int)baseR + (n % 21) - 10));
+                int g = std::min(255, std::max(0, (int)baseG + ((n * 3) % 21) - 10));
+                int b = std::min(255, std::max(0, (int)baseB + ((n * 7) % 21) - 10));
+                buf[idx+0] = (u8)r; buf[idx+1] = (u8)g; buf[idx+2] = (u8)b; buf[idx+3] = 255;
+            }
+        }
+    };
+
+    // Override grayscale biome-tinted textures with procedural colors
+    {
+        std::vector<u8> pix(TILE_SIZE * TILE_SIZE * 4);
+        for (int i = 0; i < TILE_SIZE * TILE_SIZE * 4; i++) pix[i] = 255;
+        gen(pix.data(), TILE_SIZE, 85, 155, 50, 1);
+        fixTex("grass_block_top", pix);
+    }
+
+    // Water: colorize original grayscale pattern to blue
+    {
+        auto it = m_nameMap.find("water_still");
+        if (it != m_nameMap.end()) {
+            auto& tex = m_textures[it->second];
+            for (int i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
+                int idx = i * 4;
+                int lum = ((int)tex.pixels[idx+0] * 77 + (int)tex.pixels[idx+1] * 150 + (int)tex.pixels[idx+2] * 29) >> 8;
+                tex.pixels[idx+0] = (u8)(20 + (lum * 15) / 100);
+                tex.pixels[idx+1] = (u8)(50 + (lum * 25) / 100);
+                tex.pixels[idx+2] = (u8)(180 + (lum * 20) / 100);
+                tex.pixels[idx+3] = 220;
+            }
+        }
+    }
+
     buildAtlas();
     return true;
+}
+
+void TextureManager::fixLeafTextures() {
+    for (const char* name : {"oak_leaves", "spruce_leaves", "azalea_leaves", "flowering_azalea_leaves", "jungle_leaves", "dark_oak_leaves", "mangrove_leaves", "cherry_leaves", "pale_oak_leaves", "birch_leaves", "acacia_leaves"}) {
+        auto it = m_nameMap.find(name);
+        if (it == m_nameMap.end()) continue;
+        auto& tex = m_textures[it->second];
+        bool isSpruce = (std::string(name) == "spruce_leaves");
+        for (int i = 0; i < tex.width * tex.height; i++) {
+            int idx = i * 4;
+            if (tex.pixels[idx+3] < 200) {
+                tex.pixels[idx+0] = 0;
+                tex.pixels[idx+1] = 0;
+                tex.pixels[idx+2] = 0;
+            } else {
+                int lum = ((int)tex.pixels[idx+0] * 77 + (int)tex.pixels[idx+1] * 150 + (int)tex.pixels[idx+2] * 29) >> 8;
+                if (isSpruce) {
+                    tex.pixels[idx+0] = (u8)(15 + (lum * 20) / 100);
+                    tex.pixels[idx+1] = (u8)(50 + (lum * 25) / 100);
+                    tex.pixels[idx+2] = (u8)(35 + (lum * 25) / 100);
+                } else {
+                    tex.pixels[idx+0] = (u8)(30 + (lum * 30) / 100);
+                    tex.pixels[idx+1] = (u8)(110 + (lum * 40) / 100);
+                    tex.pixels[idx+2] = (u8)(20 + (lum * 20) / 100);
+                }
+            }
+        }
+    }
 }
 
 bool TextureManager::loadResourcePackFromMemory(const std::vector<u8>& data) {
@@ -415,7 +492,61 @@ void TextureManager::generateProceduralTextures() {
     }
     addTex("diamond_ore", buf);
 
+    // Spruce log top (dark brown rings)
+    fillSolid(buf.data(), TILE_SIZE, 100, 70, 40);
+    for (int r = 3; r < 8; r += 2) {
+        for (int y = 0; y < TILE_SIZE; y++) {
+            for (int x = 0; x < TILE_SIZE; x++) {
+                int dx = x - 8, dy = y - 8;
+                int dist = (int)std::sqrt(dx * dx + dy * dy);
+                if (dist == r) {
+                    int idx = (y * TILE_SIZE + x) * 4;
+                    buf[idx+0] = 70; buf[idx+1] = 50; buf[idx+2] = 25;
+                }
+            }
+        }
+    }
+    addTex("spruce_log_top", buf);
+
+    // Spruce log side (darker brown stripes)
+    fillStriped(buf.data(), TILE_SIZE, 110, 80, 50, 85, 60, 35, 3);
+    addTex("spruce_log", buf);
+
+    // Spruce leaves (dark green-blue with transparency)
+    fillSolid(buf.data(), TILE_SIZE, 0, 0, 0, 0);
+    for (int y = 0; y < TILE_SIZE; y++) {
+        for (int x = 0; x < TILE_SIZE; x++) {
+            int n = ((x * 17 + y * 41) & 0xff);
+            if (n > 60 && n < 230) {
+                int idx = (y * TILE_SIZE + x) * 4;
+                int shade = n % 50;
+                buf[idx+0] = (u8)(25 + shade);
+                buf[idx+1] = (u8)(70 + shade);
+                buf[idx+2] = (u8)(40 + shade / 2);
+                buf[idx+3] = 255;
+            }
+        }
+    }
+    addTex("spruce_leaves", buf);
+
+    // Sandstone side (light yellow-brown)
+    fillNoisy(buf.data(), TILE_SIZE, 190, 175, 130, 14);
+    addTex("sandstone_side", buf);
+
+    // Sandstone top (lighter, smoother)
+    fillNoisy(buf.data(), TILE_SIZE, 210, 195, 150, 15);
+    addTex("sandstone_top", buf);
+
+    // Sandstone bottom (darker, like normal sandstone)
+    fillNoisy(buf.data(), TILE_SIZE, 170, 155, 115, 16);
+    addTex("sandstone_bottom", buf);
+
+    // Debug chunk border texture (solid bright cyan, visible through everything)
+    fillSolid(buf.data(), TILE_SIZE, 0, 255, 255);
+    addTex("debug_border", buf);
+
     std::cout << "Generated " << m_textures.size() << " procedural textures" << std::endl;
+    fixLeafTextures();
     buildAtlas();
 }
 
@@ -428,8 +559,12 @@ bool TextureManager::loadTexture(const std::string& name, const u8* data, size_t
     }
 
     if (w != TILE_SIZE || h != TILE_SIZE) {
-        stbi_image_free(pixels);
-        return false;
+        if (w == TILE_SIZE && h > TILE_SIZE && h % TILE_SIZE == 0) {
+            h = TILE_SIZE;
+        } else {
+            stbi_image_free(pixels);
+            return false;
+        }
     }
 
     TextureEntry entry;
@@ -502,10 +637,6 @@ void TextureManager::createVulkanTexture(VkDevice device, VkPhysicalDevice physD
     VkDeviceSize imageSize = atlas.width * atlas.height * 4;
 
     u32 mipLevels = 1;
-    {
-        u32 dim = std::max(atlas.width, atlas.height);
-        while (dim > 1) { dim >>= 1; mipLevels++; }
-    }
 
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingMemory;
@@ -723,9 +854,9 @@ void TextureManager::createVulkanTexture(VkDevice device, VkPhysicalDevice physD
     samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
     samplerInfo.unnormalizedCoordinates = VK_FALSE;
     samplerInfo.compareEnable = VK_FALSE;
-    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     samplerInfo.minLod = 0.0f;
-    samplerInfo.maxLod = (float)mipLevels;
+    samplerInfo.maxLod = 0.0f;
     vkCreateSampler(device, &samplerInfo, nullptr, &m_sampler);
 }
 

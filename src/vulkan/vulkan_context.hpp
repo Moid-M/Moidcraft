@@ -30,6 +30,8 @@ public:
     void createInstance(const std::vector<const char*>& extensions);
     void cleanup();
     void recreateSwapchain(int width, int height);
+    void recreateSwapchain();
+    void setVSync(bool enabled);
 
     VkInstance instance() const { return m_instance; }
     VkPhysicalDevice physicalDevice() const { return m_physicalDevice; }
@@ -121,6 +123,8 @@ private:
         VkDebugUtilsMessageTypeFlagsEXT type,
         const VkDebugUtilsMessengerCallbackDataEXT* data,
         void* userData);
+
+    bool m_vsyncEnabled = true;
 
     bool m_enableValidationLayers = true;
     const std::vector<const char*> m_validationLayers = {

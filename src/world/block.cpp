@@ -31,6 +31,9 @@ BlockDatabase::BlockDatabase() {
     add(BlockType::IronOre,   {BlockType::IronOre, false, false, true, 3.0f, "iron_ore", "iron_ore", "iron_ore", "iron_ore"});
     add(BlockType::GoldOre,   {BlockType::GoldOre, false, false, true, 3.0f, "gold_ore", "gold_ore", "gold_ore", "gold_ore"});
     add(BlockType::DiamondOre, {BlockType::DiamondOre, false, false, true, 3.0f, "diamond_ore", "diamond_ore", "diamond_ore", "diamond_ore"});
+    add(BlockType::SpruceLog,  {BlockType::SpruceLog, false, false, true, 1.5f, "spruce_log_top", "spruce_log_top", "spruce_log", "spruce_log"});
+    add(BlockType::SpruceLeaves, {BlockType::SpruceLeaves, true, false, true, 0.2f, "spruce_leaves", "spruce_leaves", "spruce_leaves", "spruce_leaves"});
+    add(BlockType::Sandstone,  {BlockType::Sandstone, false, false, true, 0.8f, "sandstone_top", "sandstone_bottom", "sandstone_side", "sandstone"});
 }
 
 const BlockInfo& BlockDatabase::getInfo(BlockType type) const {
@@ -56,6 +59,3 @@ void BlockDatabase::resolveAtlasIndices(TextureManager* texMgr) {
     }
 }
 
-void BlockInfo::resolveAtlasIndices(TextureManager* texMgr) {
-    // Called per-block if needed
-}

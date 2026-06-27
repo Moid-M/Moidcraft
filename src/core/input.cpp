@@ -1,12 +1,14 @@
 #include "input.hpp"
 
+static Input* g_inputInstance = nullptr;
+
 void Input::init(GLFWwindow* window) {
     m_window = window;
+    g_inputInstance = this;
     glfwSetKeyCallback(window, keyCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetCursorPosCallback(window, mouseMoveCallback);
     glfwSetScrollCallback(window, scrollCallback);
-    glfwSetWindowUserPointer(window, this);
 }
 
 void Input::update() {
@@ -63,18 +65,16 @@ void Input::setCursorMode(int mode) {
 }
 
 void Input::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    auto* input = static_cast<Input*>(glfwGetWindowUserPointer(window));
-    if (input) {
-        if (action == GLFW_PRESS) input->m_keys[key] = true;
-        else if (action == GLFW_RELEASE) input->m_keys[key] = false;
+    if (g_inputInstance) {
+        if (action == GLFW_PRESS) g_inputInstance->m_keys[key] = true;
+        else if (action == GLFW_RELEASE) g_inputInstance->m_keys[key] = false;
     }
 }
 
 void Input::mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
-    auto* input = static_cast<Input*>(glfwGetWindowUserPointer(window));
-    if (input) {
-        if (action == GLFW_PRESS) input->m_mouseBtns[button] = true;
-        else if (action == GLFW_RELEASE) input->m_mouseBtns[button] = false;
+    if (g_inputInstance) {
+        if (action == GLFW_PRESS) g_inputInstance->m_mouseBtns[button] = true;
+        else if (action == GLFW_RELEASE) g_inputInstance->m_mouseBtns[button] = false;
     }
 }
 
@@ -82,8 +82,7 @@ void Input::mouseMoveCallback(GLFWwindow* window, double x, double y) {
 }
 
 void Input::scrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-    auto* input = static_cast<Input*>(glfwGetWindowUserPointer(window));
-    if (input) {
-        input->m_scrollDelta = yoffset;
+    if (g_inputInstance) {
+        g_inputInstance->m_scrollDelta = yoffset;
     }
 }

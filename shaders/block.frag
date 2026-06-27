@@ -13,25 +13,27 @@ layout(binding = 0) uniform UniformBufferObject {
     vec4 fogColor;
     vec4 cameraPos;
     float time;
+    float gamma;
+    float alphaDiscard;
 } ubo;
 
 layout(binding = 1) uniform sampler2D blockTexture;
 
 void main() {
-    vec3 texColor = texture(blockTexture, fragUv).rgb;
-
-    if (texColor.r < 0.01 && texColor.g < 0.01 && texColor.b < 0.01) {
-        texColor = vec3(1.0, 0.0, 1.0);
-    }
+    vec4 texColor = texture(blockTexture, fragUv);
 
     vec3 lightDir = normalize(vec3(0.5, 1.0, 0.3));
     float diff = max(dot(normalize(fragNormal), lightDir), 0.2);
     diff *= fragLighting;
 
-    outColor = vec4(texColor * diff, 1.0);
+    if (texColor.a < ubo.alphaDiscard) discard;
+
+    outColor = vec4(texColor.rgb * diff, texColor.a);
+
+    outColor.rgb = pow(outColor.rgb, vec3(1.0 / ubo.gamma));
 
     vec3 viewPos = ubo.cameraPos.xyz;
     float dist = length(fragWorldPos - viewPos);
     float fog = 1.0 - exp(-dist * dist * 0.00005);
-    outColor = mix(outColor, ubo.fogColor, clamp(fog, 0.0, 0.8));
+    outColor = vec4(mix(outColor.rgb, ubo.fogColor.rgb, clamp(fog, 0.0, 0.8)), outColor.a);
 }

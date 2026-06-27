@@ -66,7 +66,7 @@ bool Player::collidesAt(const glm::vec3& feetPos) const {
                 BlockType block = m_world->getBlock(bx, by, bz);
                 if (block == BlockType::Air) continue;
                 auto& info = BlockDatabase::instance().getInfo(block);
-                if (info.transparent || !info.solid) continue;
+                if (!info.solid) continue;
 
                 if (minX < bx + 1 && maxX > bx &&
                     minY < by + 1 && maxY > by &&
@@ -76,6 +76,23 @@ bool Player::collidesAt(const glm::vec3& feetPos) const {
             }
         }
     }
+    return false;
+}
+
+bool Player::isInWater() const {
+    if (!m_world) return false;
+    float r = PLAYER_WIDTH * 0.5f;
+    int bx0 = (int)std::floor(m_position.x - r);
+    int bx1 = (int)std::floor(m_position.x + r);
+    int by0 = (int)std::floor(m_position.y);
+    int by1 = (int)std::floor(m_position.y + PLAYER_HEIGHT);
+    int bz0 = (int)std::floor(m_position.z - r);
+    int bz1 = (int)std::floor(m_position.z + r);
+    for (int bx = bx0; bx <= bx1; bx++)
+        for (int by = by0; by <= by1; by++)
+            for (int bz = bz0; bz <= bz1; bz++)
+                if (m_world->getBlock(bx, by, bz) == BlockType::Water)
+                    return true;
     return false;
 }
 
@@ -147,12 +164,25 @@ void Player::handleMovement(float dt) {
     m_velocity.x = wishDir.x;
     m_velocity.z = wishDir.z;
 
-    if (m_input->keyDown(GLFW_KEY_SPACE) && m_onGround) {
-        m_velocity.y = m_jumpPower;
-        m_onGround = false;
-    }
+    bool inWater = isInWater();
 
-    m_velocity.y += m_gravity * dt;
+    if (inWater) {
+        if (m_input->keyDown(GLFW_KEY_SPACE))
+            m_velocity.y = 4.0f;
+        else if (m_input->keyDown(GLFW_KEY_LEFT_SHIFT))
+            m_velocity.y = -2.0f;
+        else
+            m_velocity.y += m_gravity * 0.15f * dt;
+        m_velocity.x *= 0.85f;
+        m_velocity.z *= 0.85f;
+        m_onGround = false;
+    } else {
+        if (m_input->keyDown(GLFW_KEY_SPACE) && m_onGround) {
+            m_velocity.y = m_jumpPower;
+            m_onGround = false;
+        }
+        m_velocity.y += m_gravity * dt;
+    }
 
     // Move step by step along each axis, checking collision per axis
     glm::vec3 newPos = m_position;
@@ -161,21 +191,18 @@ void Player::handleMovement(float dt) {
     newPos = moveOnAxis(newPos, m_velocity.y * dt, 1);
     newPos = moveOnAxis(newPos, m_velocity.z * dt, 2);
 
-    // Check if we're on ground
-    if (m_velocity.y <= 0.0f) {
-        glm::vec3 belowCheck = newPos;
-        belowCheck.y -= 0.05f;
-        m_onGround = collidesAt(belowCheck);
-        if (m_onGround) {
-            m_velocity.y = 0.0f;
+    if (!inWater) {
+        if (m_velocity.y <= 0.0f) {
+            glm::vec3 belowCheck = newPos;
+            belowCheck.y -= 0.05f;
+            m_onGround = collidesAt(belowCheck);
+            if (m_onGround) m_velocity.y = 0.0f;
+        } else {
+            m_onGround = false;
         }
-    } else {
-        m_onGround = false;
     }
 
-    // Stop horizontal velocity if hitting something
     if (collidesAt(newPos)) {
-        // This shouldn't happen with proper per-axis checks, but safety net
         if (collidesAt({newPos.x, m_position.y, newPos.z})) {
             m_velocity.x = 0;
             m_velocity.z = 0;
@@ -184,7 +211,6 @@ void Player::handleMovement(float dt) {
 
     m_position = newPos;
 
-    // Check if we fell out of the world
     if (m_position.y < -10.0f) {
         m_position.y = 70.0f;
         m_velocity = glm::vec3(0);

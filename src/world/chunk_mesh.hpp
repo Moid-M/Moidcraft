@@ -17,6 +17,9 @@ public:
     bool valid() const { return m_opaqueMesh.valid() || m_transparentMesh.valid(); }
     void cleanup();
 
+    static void setTransparentLeaves(bool enabled);
+    static bool transparentLeavesEnabled();
+
     const VulkanMesh& opaqueMesh() const { return m_opaqueMesh; }
     const VulkanMesh& transparentMesh() const { return m_transparentMesh; }
 
@@ -31,5 +34,4 @@ private:
 
     void addFace(bool transparent, const glm::vec3& pos, BlockFaceDir face, const AtlasRegion& region,
                  const glm::vec3& normal, u8 light);
-    void addVertex(bool transparent, const Vertex& v);
 };

@@ -27,3 +27,15 @@ extern/glfw/deps/
 extern/glslang
 extern/glslangValidator
 extern/spirv-remap
+
+# Extern - system shared libraries
+extern/libz.so
+extern/zconf.h
+extern/zlib.h
+
+# System packages
+*.deb
+
+# Build artifacts (root level)
+frag.spv
+vert.spv

@@ -25,6 +25,9 @@ enum class BlockType : u8 {
     IronOre,
     GoldOre,
     DiamondOre,
+    SpruceLog,
+    SpruceLeaves,
+    Sandstone,
     NUM_BLOCK_TYPES
 };
 
@@ -38,7 +41,7 @@ struct BlockInfo {
     bool liquid = false;
     bool solid = true;
     float hardness = 1.0f;
-    // Minecraft texture names for each face
+    // Texture names for each face
     std::string texTop;
     std::string texBottom;
     std::string texSide;
@@ -61,7 +64,6 @@ struct BlockInfo {
         return atlasSide;
     }
 
-    void resolveAtlasIndices(class TextureManager* texMgr);
 };
 
 class BlockDatabase {

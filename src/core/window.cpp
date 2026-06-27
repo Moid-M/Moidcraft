@@ -15,6 +15,7 @@ Window::Window(int width, int height, const std::string& title)
         throw std::runtime_error("Failed to create GLFW window");
     }
     glfwSetWindowUserPointer(m_window, this);
+    glfwGetFramebufferSize(m_window, &m_fbWidth, &m_fbHeight);
     glfwSetFramebufferSizeCallback(m_window, framebufferResizeCallback);
 }
 
@@ -59,8 +60,12 @@ std::vector<const char*> Window::getRequiredInstanceExtensions() const {
 void Window::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
     auto* win = static_cast<Window*>(glfwGetWindowUserPointer(window));
     if (win) {
-        win->m_width = width;
-        win->m_height = height;
+        win->m_fbWidth = width;
+        win->m_fbHeight = height;
         win->m_resized = true;
+        int winW, winH;
+        glfwGetWindowSize(window, &winW, &winH);
+        win->m_width = winW;
+        win->m_height = winH;
     }
 }

@@ -33,6 +33,7 @@ public:
     VkDescriptorImageInfo descriptorInfo() const;
 
     void generateProceduralTextures();
+    void fixLeafTextures();
 
     static constexpr int ATLAS_SIZE = 1024;
     static constexpr int TILE_SIZE = 16;
